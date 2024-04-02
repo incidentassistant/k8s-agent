@@ -1,0 +1,112 @@
+# Copyright 2024 Incident Assistant AI
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: v1  
+kind: ServiceAccount  
+metadata:  
+  name: incidentassistant-sa  
+  namespace: default  
+  
+---  
+  
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: incidentassistant-cr
+rules:
+- apiGroups: [""]
+  resources:
+    - "pods"
+    - "services"
+    - "configmaps"
+    - "secrets"
+    - "persistentvolumeclaims"
+    - "endpoints"
+  verbs: ["get", "watch", "list"]
+- apiGroups: ["apps"]
+  resources:
+    - "deployments"
+    - "statefulsets"
+    - "daemonsets"
+  verbs: ["get", "watch", "list"]
+- apiGroups: ["batch"]
+  resources:
+    - "jobs"
+    - "cronjobs"
+  verbs: ["get", "watch", "list"]
+- apiGroups: ["networking.k8s.io"]
+  resources:
+    - "ingresses"
+    - "networkpolicies"
+  verbs: ["get", "watch", "list"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources:
+    - "roles"
+    - "rolebindings"
+    - "clusterroles"
+    - "clusterrolebindings"
+  verbs: ["get", "watch", "list"]
+
+
+---  
+  
+apiVersion: rbac.authorization.k8s.io/v1  
+kind: ClusterRoleBinding  
+metadata:  
+  name: incidentassistant-crb  
+subjects:  
+- kind: ServiceAccount  
+  name: incidentassistant-sa  
+  namespace: default  
+roleRef:  
+  kind: ClusterRole  
+  name: incidentassistant-cr  
+  apiGroup: rbac.authorization.k8s.io  
+  
+---  
+  
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: incidentassistant-controller
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: incidentassistant-controller
+  template:
+    metadata:
+      labels:
+        app: incidentassistant-controller
+    spec:
+      serviceAccountName: incidentassistant-sa
+      containers:
+      - name: controller
+        image: incidentassistant-controller:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ENCRYPTION_ALGORITHM
+          value: "AES-GCM"
+        - name: API_KEY
+          value: "jBOQocCu3aoPUzrtBv+SJf5/LFsZBGqXayPvqNxXTO8="
+        - name: DESTINATION_URL
+          value: "host.minikube.internal:50051"
+        - name: DEBUG_ENABLED
+          value: "true"
+        - name: EXTERNAL_SEND_ENABLED
+          value: "true"
+        - name: USE_TLS
+          value: "false"          
+
